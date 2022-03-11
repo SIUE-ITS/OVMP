@@ -1,0 +1,200 @@
+{% load projects_extras %}
+{% for message in messages %}
+  <div class="alert {{ message.tags }} alert-dismissible" role="alert">
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+    {{ message }}
+  </div>
+{% endfor %}
+<div class="form-group form-inline" style="margin-top: 15px; margin-left: 15px;">
+  <label for="selectProject" style="font-size: 20px; margin-right: 5px;">Project:</label>
+  <select class="form-control nav-link" id="selectProject" style="max-width:15%; margin-right: 20px;">
+    <option>{{ project }}</option>
+    {% for member in request.user.member_set.all %}
+      {% if project != member.project.name %}
+        <option>{{ member.project }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
+  <label for="selectInstance" style="font-size: 20px; margin-right: 5px">Instance:</label>
+    <select class="form-control" id="selectInstance" style="max-width:15%;" disabled>
+        <option>N/A</option>
+    </select>
+  <button id='refreshCache' style="font-size:24px; margin-right: 20px"><i class="fa fa-refresh"></i></button>
+  <input type='button' value="Launch New Instance" class="btn btn-outline-secondary" data-toggle="modal" data-target="#launchModal" data-backdrop="false" style="margin-right: 5px"/>
+</div>
+{% has_creator request.user 'CR' as creator %}
+{% if images %}
+  <p align="center">You do not have any instances click "Launch New Instance" above.</p>
+{% elif not images and creator %}
+  <p align="center">Your project does not have any images. <a href="{% url 'images:list' %}">Add images.</a></p>
+{% else %}
+  <p align="center">Your project does not have any images.</p>
+{% endif %}
+<div class="modal" id="launchModal" tabindex="-1" role="dialog" aria-labelledby="launchModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="launchModalLabel">Launch Instance</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="card">
+          <div class="card-body">
+            <p>Launch an instance from the flavor and images below.</p>
+            <div class="form-group">
+              <label for="image_selector">Select Image:</label>
+              <select class="form-control" id="image_selector" style="width:auto;">
+                {% for image in images %}
+                  <option value="{{ image.uuid }}" data-image-size="{{ image.size }}">{{ image.name }}</option>
+                {% endfor %}
+              </select>
+                <label for="flavor_selector">Select Flavor:</label>
+              <select class="form-control" id="flavor_selector" style="width:auto;">
+                {% if proj_flavors %}
+                  {% for flavor in flavors %}
+                    {% if flavor.name in proj_flavors %}
+                      <option value="{{ flavor.id }}">{{ flavor.name }}</option>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                    <option value="none">N/A</option>
+                {% endif %}
+              </select>
+              {% if proj_flavors %}
+                <div id="flavor_info"></div>
+              {% else %}
+                <div id="flavor_info"><p class='alert alert-danger'>No project flavors please click help above and contact support.</p></div>
+              {% endif %}
+              <hr>
+              <label for="instanceName">Name (optional max length 20): </label><br />
+              <input type="text" id="instanceName" name="instanceName" maxlength="20" onkeypress="return /[a-zA-Z0-9_]/i.test(event.key)">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        {% if proj_flavors %}
+          <button id="launch" type="button" class="btn btn-primary" data-dismiss="modal">Launch</button>
+        {% else %}
+          <button id="launch" type="button" class="btn btn-primary" disabled>Launch</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+$("#refreshCache").on('click', function(){
+   $.ajax({
+      type: 'GET',
+      url: '/actions/refresh/' + $("#selectProject").val() + '/',
+      beforeSend: function(){
+        $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Do not refresh while processing...</p>'
+          );
+      },
+      error: function(){
+        $("#projectContent").html('<h4>Failed please contact support by clicking Help above!</h4>');
+      },
+      success: function(html){
+        $("#projectContent").html(html);
+        window.history.pushState( {} , window.document.title, '/dashboard/' + $("#selectProject").val() + '/' );
+      },
+      dataType: 'html'
+    });
+});
+$('#image_selector').change(function(){
+  $("#flavor_selector").trigger('change');
+});
+$('#flavor_selector').change(function(){
+   var flavors = {};
+   {% for flavor in flavors %}
+    {% if flavor.name in proj_flavors %}
+      flavors['{{ flavor.id }}'] = {
+        'vcpus': '{{ flavor.vcpus }}',
+        'ram': '{{ flavor.ram }}',
+        'disk': '{{ flavor.disk }}',
+        'usage': '{{ flavor.flavor_usage }}'
+      };
+     {% endif %}
+   {% endfor %}
+   var info;
+   if (parseInt(flavors[$("#flavor_selector").val()].disk) < parseInt($("#image_selector").find('option:selected').data('image-size'))) {
+     info = "<p class='alert alert-danger'>Disk size is too small please select a flavor with disk of ".concat($("#image_selector").find('option:selected').data('image-size'), 'GB or greater.</p>');
+     $("#launch").prop("disabled", true);
+   } else {
+     info = "";
+     $("#launch").prop("disabled", false);
+   }
+   var resource;
+   var percentage;
+   resource = parseInt(flavors[$("#flavor_selector").val()].usage) + parseInt(({{ resource_usage }}))
+   percentage = 100 * resource / parseInt({{ max_resources}})
+   if (parseInt(flavors[$("#flavor_selector").val()].usage) + parseInt({{ resource_usage }}) - 1 > parseInt({{ max_resources }})) {
+     info += "<p class='alert alert-danger'>Flavor uses more resources than allowed.</p>";
+     color = "background-color: red; ";
+   } else {
+     info += "";
+     color = "";
+   }
+   $("#flavor_info").html(
+    info +
+    "<p>Available Resources: </p>" +
+    '<div class="progress md-progress" style="height: 20px">' +
+    '<div class="progress-bar" role="progressbar" style="' + color + 'width: ' + percentage +
+    '%; height: 20px" aria-valuemin="0" aria-valuemax="{{ max_resources }}">' +
+    resource + '/{{ max_resources }}</div>' +
+    '</div>' +
+    '<p>CPUs: ' + flavors[$("#flavor_selector").val()].vcpus + '</p>' +
+    '<p>RAM: ' + flavors[$("#flavor_selector").val()].ram + 'MB</p>' +
+    '<p>DISK: ' + flavors[$("#flavor_selector").val()].disk + 'GB</p>' +
+    '<p>Usage: ' + flavors[$("#flavor_selector").val()].usage + ' Resources</p>'
+   );
+});
+$('#launchModal').on('shown.bs.modal', function () {
+});
+$("#launch").on('click', function(){
+   $.ajax({
+      type: 'GET',
+      url: '/actions/launch/{{ project }}/'.concat($('#image_selector').val(), '/', $('#flavor_selector').val(), '/', $('#instanceName').val()),
+
+      beforeSend: function(){
+        $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Launching instance should take about 30 seconds. Do not refresh while processing...</p>'
+          );
+      },
+      error: function(){
+        $("#projectContent").html('<h4>Error. Try refreshing the page. If you continue to have problems please contact support by clicking Help above!</h4>');
+      },
+      success: function(html){
+        $("#projectContent").html(html);
+        $(window).resize();
+      },
+      dataType: 'html'
+    });
+});
+$("#selectProject").change(function(){
+   $.ajax({
+      type: 'GET',
+      url: '/actions/console/' + $("#selectProject").val() + '/',
+      beforeSend: function(){
+        $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Do not refresh while processing...</p>'
+          );
+      },
+      error: function(){
+        $("#projectContent").html('<h4>Failed please contact support by clicking Help above!</h4>');
+      },
+      success: function(html){
+        $("#projectContent").html(html);
+        window.history.pushState( {} , window.document.title, '/dashboard/' + $("#selectProject").val() + '/' );
+      },
+      dataType: 'html'
+    });
+});
+$("#flavor_selector").trigger('change');
+</script>

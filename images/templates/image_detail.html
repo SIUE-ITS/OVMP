@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block content %}
+<h4>{{ object }}</h4>
+<p>{{ object.uuid }}</p>
+{% for project in object.projects.all %}
+  <p>{{ project }}</p>
+{% endfor %}
+{% endblock %}

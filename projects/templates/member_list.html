@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+<a href='{% url "projects:member_create" project=project %}'><button type="button" class="btn btn-light">Add Member</button></a>
+<div class="container">
+  <div class="row">
+    {% for member in object_list %}
+    <div class="col-sm-6">
+        <div class="card" style="width: 18rem;">
+          <div class="card-body">
+            <h5 class="card-title">Member: {{ member }}</h5>
+            <p class="card-text">Owner: {{ member.is_owner }}</p>
+            <p class="card-text">Resources: {{ member.max_resources }}</p>
+            <div class="row">
+              <a href='{% url "projects:member_update" member=member.id %}'><button type="button" class="btn btn-light">Edit</button></a>
+              <a href='{% url "projects:member_delete" member=member.id %}'><button type="button" class="btn btn-light">Delete</button></a>
+            </div>
+          </div>
+        </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

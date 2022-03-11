@@ -1,0 +1,428 @@
+{% for message in messages %}
+  <div class="alert {{ message.tags }} alert-dismissible" role="alert">
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+    {{ message }}
+  </div>
+{% endfor %}
+<div class="form-group form-inline" style="margin-top: 15px; margin-left: 15px;">
+  <label for="selectProject" style="font-size: 20px; margin-right: 5px;">Project:</label>
+  <select class="form-control nav-link" id="selectProject" style="max-width:15%; margin-right: 20px;">
+    <option>{{ project }}</option>
+    {% for member in request.user.member_set.all %}
+      {% if project != member.project.name %}
+        <option>{{ member.project }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
+  <label for="selectInstance" style="font-size: 20px; margin-right: 5px">Instance:</label>
+    <select class="form-control" id="selectInstance">
+        {% for stack_name, stack in user_stacks.items %}
+            <option value="{{ stack_name }}">{{stack.name }} {{ stack.user }} {{ stack.image.name }}</option>
+        {% endfor %}
+    </select>
+  <button id='refreshCache' title="Refresh instance list cache for current project" style="font-size:24px; margin-right: 20px;"><i class="fa fa-refresh"></i></button>
+  <input id='reloadConsole' type='button' value="Reload Console" class="btn btn-outline-secondary" style="margin-right: 5px"/>
+  <input id='buttonLaunch' type='button' value="Launch New Instance" class="btn btn-outline-secondary" data-toggle="modal" data-target="#launchModal" data-backdrop="false" style="margin-right: 5px"/>
+  <input id='buttonDelete' type='button' value="Delete Instance" class="btn btn-outline-secondary" data-toggle="modal" data-target="#deleteModal" data-backdrop="false" style="margin-right: 5px"/>
+  <input id='buttonPower' type='button' value="Power On/Off" class="btn btn-outline-secondary" data-toggle="modal" data-target="#powerModal" data-backdrop="false" style="margin-right: 5px"/>
+  <input id='buttonReboot' type='button' value="Reboot" class="btn btn-outline-secondary" data-toggle="modal" data-target="#rebootModal" data-backdrop="false" style="margin-right: 5px"/>
+  <a id='console_href' href="" target="_blank" style="text-decoration: underline">Click here to show only console</a><br />
+</div>
+  <!-- <p class='alert alert-secondary' style="margin: 0px;"> -->
+  <!-- If console is not responding to keyboard input: click the QEMU status bar below. -->
+  <!-- <a id='console_href' href="" target="_blank" style="text-decoration: underline">Click here to show only console</a><br /> -->
+  <!-- </p> -->
+  <iframe id="console_embed" src="" style="position:absolute;width:99%;height:82%;">
+  </iframe>
+<div class="modal" id="launchModal" tabindex="-1" role="dialog" aria-labelledby="launchModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="launchModalLabel">Launch Instance</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="card">
+          <div class="card-body">
+            <p>Launch an instance from the flavor and images below.</p>
+            <div class="form-group">
+              <label for="image_selector">Select Image:</label>
+              <select class="form-control" id="image_selector" style="width:auto;">
+                {% for image in images %}
+                  <option value="{{ image.uuid }}" data-image-size="{{ image.size }}">{{ image.name }}</option>
+                {% endfor %}
+              </select>
+                <label for="flavor_selector">Select Flavor:</label>
+              <select class="form-control" id="flavor_selector" style="width:auto;">
+                {% if proj_flavors %}
+                  {% for flavor in flavors %}
+                    {% if flavor.name in proj_flavors %}
+                      <option value="{{ flavor.id }}">{{ flavor.name }}</option>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <option value="none">N/A</option>
+                {% endif %}
+              </select>
+              {% if proj_flavors %}
+                <div id="flavor_info"></div>
+              {% else %}
+                <div id="flavor_info"><p class='alert alert-danger'>No project flavors please click help above and contact support.</p></div>
+              {% endif %}
+              <hr>
+              <label for="instanceName">Name (optional max length 40): </label><br />
+              <input type="text" id="instanceName" name="instanceName" maxlength="40" onkeypress="return /[a-zA-Z0-9_]/i.test(event.key)">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        {% if proj_flavors %}
+          <button id="launch" type="button" class="btn btn-primary" data-dismiss="modal">Launch</button>
+        {% else %}
+          <button id="launch" type="button" class="btn btn-primary" disabled>Launch</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="powerModal" tabindex="-1" role="dialog" aria-labelledby="powerModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="powerModalLabel">Power On/Off Instance</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="powerBodyText" class="alert alert-warning" role="alert">Instance is currently running, powering off the instance will lose unsaved data. Please make sure to save any current running applications...</div>
+        <p>Would you like to continue?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+        <button id="power" type="button" class="btn btn-primary" data-dismiss="modal">Yes</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="rebootModal" tabindex="-1" role="dialog" aria-labelledby="rebootModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="rebootModalLabel">Reboot Instance</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="rebootBodyText" class="alert alert-warning" role="alert">Instance is currently running, rebooting the instance will lose unsaved data. Please make sure to save any current running applications...</div>
+        <p>Would you like to continue?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+        <button id="reboot" type="button" class="btn btn-primary" data-dismiss="modal">Yes</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Delete Instance</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="alert alert-danger" role="alert">Warning data is not recoverable!</div>
+      <div class="modal-body">
+        <p>This will delete the instance entirely with no way to recover data.</p>
+        <p>Are you sure you would like to continue?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+        <button id="delete" type="button" class="btn btn-primary" data-dismiss="modal">Yes</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+$("#selectInstance").change(function(){
+  $("#reloadConsole").attr("disabled", true);
+  $("#selectInstance").attr("disabled", true);
+  $("#selectProject").attr("disabled", true);
+  $("#buttonPower").attr("disabled", true);
+  $("#buttonReboot").attr("disabled", true);
+  $("#buttonDelete").attr("disabled", true);
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: '/actions/console_url/{{ project }}/'.concat($("#selectInstance").val()),
+    success: function(data){
+      $("#console_embed").attr("src", data.vnc_url);
+      $("#console_href").attr("href", data.vnc_url);
+      if (data.state == 'Off'){
+        $('#buttonPower').attr("value", "Power Off");
+        $('#powerModalLabel').text("Power Off Instance");
+        $('#powerBodyText').attr("hidden", false);
+      } else {
+        $('#buttonPower').attr("value", "Power On");
+        $('#powerModalLabel').text("Power On Instance");
+        $('#powerBodyText').attr("hidden", true);
+      }
+      $("#reloadConsole").attr("disabled", false);
+      $("#selectInstance").attr("disabled", false);
+      $("#selectProject").attr("disabled", false);
+      $("#buttonPower").attr("disabled", false);
+      $("#buttonReboot").attr("disabled", false);
+      $("#buttonDelete").attr("disabled", false);
+      $("#console_href").focus();
+    },
+    beforeSend: function(){
+      $("#console_embed").attr("src", '/actions/spinner/');
+    },
+    error: function(){
+      $("#selectInstance").trigger('change');
+      $("#console_embed").attr("src", '/actions/failed/');
+      $("#reloadConsole").attr("disabled", false);
+      $("#selectInstance").attr("disabled", false);
+      $("#selectProject").attr("disabled", false);
+      $("#buttonPower").attr("disabled", false);
+      $("#buttonReboot").attr("disabled", false);
+      $("#buttonDelete").attr("disabled", false);
+    },
+  });
+});
+$('#launchModal').on('shown.bs.modal', function () {
+})
+$('#powerModal').on('shown.bs.modal', function () {
+})
+$('#rebootModal').on('shown.bs.modal', function () {
+})
+$('#deleteModal').on('shown.bs.modal', function () {
+})
+$("#refreshCache").on('click', function(){
+   $.ajax({
+      type: 'GET',
+      url: '/actions/refresh/' + $("#selectProject").val() + '/',
+      beforeSend: function(){
+        $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Do not refresh while processing...</p>'
+          );
+      },
+      error: function(){
+        $("#projectContent").html('<h4>Failed please contact support by clicking Help above!</h4>');
+      },
+      success: function(html){
+        $("#projectContent").html(html);
+        window.history.pushState( {} , window.document.title, '/dashboard/' + $("#selectProject").val() + '/' );
+      },
+      dataType: 'html'
+    });
+});
+$("#reloadConsole").on('click', function(){
+  $("#reloadConsole").attr("disabled", true);
+  $("#selectInstance").attr("disabled", true);
+  $("#selectProject").attr("disabled", true);
+  $("#buttonPower").attr("disabled", true);
+  $("#buttonReboot").attr("disabled", true);
+  $("#buttonDelete").attr("disabled", true);
+  $.ajax({
+    dataType: "json",
+    url: '/actions/console_url_force/{{ project }}/'.concat($("#selectInstance").val()),
+    success: function(data){
+      $("#console_embed").attr("src", data.vnc_url);
+      $("#console_href").attr("href", data.vnc_url);
+      if (data.state == 'Off'){
+        $('#buttonPower').attr("value", "Power Off");
+        $('#powerModalLabel').text("Power Off Instance");
+        $('#powerBodyText').attr("hidden", false);
+      } else {
+        $('#buttonPower').attr("value", "Power On");
+        $('#powerModalLabel').text("Power On Instance");
+        $('#powerBodyText').attr("hidden", true);
+      }
+      $("#reloadConsole").attr("disabled", false);
+      $("#selectInstance").attr("disabled", false);
+      $("#selectProject").attr("disabled", false);
+      $("#buttonPower").attr("disabled", false);
+      $("#buttonReboot").attr("disabled", false);
+      $("#buttonDelete").attr("disabled", false);
+      $("#console_href").focus();
+    },
+    beforeSend: function(){
+      $("#console_embed").attr("src", '/actions/spinner/');
+    },
+    error: function(){
+      $("#console_embed").attr("src", '/actions/failed/');
+      $("#reloadConsole").attr("disabled", false);
+      $("#selectInstance").attr("disabled", false);
+      $("#selectProject").attr("disabled", false);
+      $("#buttonPower").attr("disabled", false);
+      $("#buttonReboot").attr("disabled", false);
+      $("#buttonDelete").attr("disabled", false);
+    },
+  });
+});
+//$("#console_embed").mouseenter(function(){
+//  $("#console_embed").focus();
+//});
+// $("#console_embed").mouseleave(function(){
+//   $("#console_embed").blur();
+// });
+$('#image_selector').change(function(){
+  $("#flavor_selector").trigger('change');
+});
+$('#flavor_selector').change(function(){
+  var flavors = {};
+  {% for flavor in flavors %}
+    {% if flavor.name in proj_flavors %}
+       flavors['{{ flavor.id }}'] = {
+         'vcpus': '{{ flavor.vcpus }}',
+         'ram': '{{ flavor.ram }}',
+         'disk': '{{ flavor.disk }}',
+         'usage': '{{ flavor.flavor_usage }}'
+       };
+    {% endif %}
+  {% endfor %}
+  var info;
+  if (parseInt(flavors[$("#flavor_selector").val()].disk) < parseInt($("#image_selector").find('option:selected').data('image-size'))) {
+    info = "<p class='alert alert-danger'>Disk size is too small please select a flavor with disk of ".concat($("#image_selector").find('option:selected').data('image-size'), 'GB or greater.</p>');
+    $("#launch").prop("disabled", true);
+  } else {
+    info = "";
+    $("#launch").prop("disabled", false);
+  }
+  var resource;
+  var percentage;
+  resource = parseInt(flavors[$("#flavor_selector").val()].usage) + parseInt(({{ resource_usage }}))
+  percentage = 100 * resource / parseInt({{ max_resources}})
+  if (parseInt(flavors[$("#flavor_selector").val()].usage) + parseInt({{ resource_usage }}) - 1 > parseInt({{ max_resources }})) {
+    info += "<p class='alert alert-danger'>Flavor uses more resources than allowed.</p>";
+    color = "background-color: red; ";
+  } else {
+    info += "";
+    color = "";
+  }
+  $("#flavor_info").html(
+   info +
+   "<p>Available Resources: </p>" +
+   '<div class="progress md-progress" style="height: 20px">' +
+   '<div class="progress-bar" role="progressbar" style="' + color + 'width: ' + percentage +
+   '%; height: 20px" aria-valuemin="0" aria-valuemax="{{ max_resources }}">' +
+   resource + '/{{ max_resources }}</div>' +
+   '</div>' +
+   '<p>CPUs: ' + flavors[$("#flavor_selector").val()].vcpus + '</p>' +
+   '<p>RAM: ' + flavors[$("#flavor_selector").val()].ram + 'MB</p>' +
+   '<p>DISK: ' + flavors[$("#flavor_selector").val()].disk + 'GB</p>' +
+   '<p>Usage: ' + flavors[$("#flavor_selector").val()].usage + ' Resources</p>'
+  );
+});
+$("#launch").on('click', function(){
+  console.log($('#flavor_selector').val())
+   $.ajax({
+      type: 'GET',
+      url: '/actions/launch/{{ project }}/'.concat($('#image_selector').val(), '/', $('#flavor_selector').val(), '/', $('#instanceName').val()),
+      beforeSend: function(){
+        $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Launching instance should take about 30 seconds. Do not refresh while processing...</p>'
+          );
+      },
+      error: function(){
+        $("#projectContent").html('<h4>Error. Try refreshing the page. If you continue to have problems please contact support by clicking Help above!</h4>');
+      },
+      success: function(html){
+        $("#projectContent").html(html);
+        $(window).resize();
+      },
+      dataType: 'html'
+    });
+});
+$("#power").on('click', function(){
+   $.ajax({
+      type: 'GET',
+      url: '/actions/power/{{ project }}/'.concat($("#selectInstance").val()),
+
+      beforeSend: function(){
+        $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Modifying instance should take about 10 seconds. Do not refresh while processing...</p>'
+          );
+      },
+      error: function(){
+        $("#projectContent").html('<h4>Failed please contact support by clicking Help above!</h4>');
+      },
+      success: function(html){
+        $("#projectContent").html(html);
+        $(window).resize();
+      },
+      dataType: 'html'
+    });
+});
+$("#reboot").on('click', function(){
+   $.ajax({
+      type: 'GET',
+      url: '/actions/power/{{ project }}/'.concat($("#selectInstance").val()).concat("/reboot"),
+
+      beforeSend: function(){
+        $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Modifying instance should take about 10 seconds. Do not refresh while processing...</p>'
+          );
+      },
+      error: function(){
+        $("#projectContent").html('<h4>Failed please contact support by clicking Help above!</h4>');
+      },
+      success: function(html){
+        $("#projectContent").html(html);
+        $(window).resize();
+      },
+      dataType: 'html'
+    });
+});
+$("#delete").on('click', function(){
+   $.ajax({
+      type: 'GET',
+      url: '/actions/delete/{{ project }}/'.concat($("#selectInstance").val()),
+
+      beforeSend: function(){
+        $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Do not refresh while processing...</p>'
+          );
+      },
+      error: function(){
+        $("#projectContent").html('<h4>Failed please contact support by clicking Help above!</h4>');
+      },
+      success: function(html){
+        $("#projectContent").html(html);
+        $(window).resize();
+      },
+      dataType: 'html'
+    });
+});
+$("#selectProject").change(function(){
+   $.ajax({
+      type: 'GET',
+      url: '/actions/console/' + $("#selectProject").val() + '/',
+      beforeSend: function(){
+        $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Do not refresh while processing...</p>'
+          );
+      },
+      error: function(){
+        $("#projectContent").html('<h4>Failed please contact support by clicking Help above!</h4>');
+      },
+      success: function(html){
+        $("#projectContent").html(html);
+        window.history.pushState( {} , window.document.title, '/dashboard/' + $("#selectProject").val() + '/' );
+      },
+      dataType: 'html'
+    });
+});
+$("#selectInstance").trigger('change');
+$("#flavor_selector").trigger('change');
+</script>

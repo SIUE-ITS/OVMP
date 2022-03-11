@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<h4 align="center" style="margin-top: 10px;">Images</h4>
+<div class="row">
+  <a href='{% url "images:create" %}'><button type="button" class="btn btn-light">Create Image</button></a>
+</div>
+<div class="row">
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Name (click to edit project image access)</th>
+      <th scope="col">Projects</th>
+      <th scope="col">UUID</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for image in object_list %}
+      <tr>
+        <td><a href="{% url 'images:update' image=image.id %}">{{ image.name }}</a></td>
+        <td>
+          {% for project in image.projects.all %}
+            {% if project in projects %}
+              <a href="{% url 'projects:detail' project=project.id %}">{{ project }}</a>
+            {% endif %}
+          {% endfor %}
+        </td>
+        <td>{{ image.uuid }}</td>
+        <td><a href='{% url "images:delete" image=image.id %}'><button type="button" class="btn btn-light">Delete Image</button></a></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

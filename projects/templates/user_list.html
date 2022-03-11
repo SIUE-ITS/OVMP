@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<h4 align="center" style="margin-top: 10px;">Images</h4>
+<div class="row">
+  <a href='{% url "projects:user_create" %}'><button type="button" class="btn btn-light">Create User</button></a>
+</div>
+<div class="row">
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Name</th>
+      <th scope="col">Delete</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in object_list %}
+      <tr>
+        <td>{{ user }}</td>
+        <td><a href='{% url "projects:user_delete" user=user.id %}'><button type="button" class="btn btn-light">Delete User</button></a></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

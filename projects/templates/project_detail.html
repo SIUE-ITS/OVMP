@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<a href='{% url "projects:delete" project=object.id%}'><button type="button" class="btn btn-light">Delete Project</button></a>
+<div class="container">
+  <div class="row">
+    <div class="col-sm-6">
+      <a href='{% url "projects:member_list" project=object.id %}'>
+        <div class="card" style="width: 18rem;">
+          <div class="card-body">
+            <h5 class="card-title">Project: {{ object }}</h5>
+            <p class="card-text">Members:</p>
+            {% for member in object.member_set.all %}
+            <p class="card-text">{{ member }}</p>
+            {% endfor %}
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block javascript %}
+
+{% endblock %}

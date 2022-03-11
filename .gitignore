@@ -1,0 +1,9 @@
+db.sqlite3
+venv/
+migrations
+__pycache__
+static/*
+db
+error.log
+debug.log
+private/

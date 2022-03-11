@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+{{ image.name }}
+<p>crtl+click to add a project or select multiple.</p>
+<form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-secondary" type="submit">Save</button>
+</form>
+{% endblock %}

@@ -1,0 +1,18 @@
+heat_template_version: "2017-09-01"
+description: "Create instance for console access."
+parameters:
+  flavor:
+    type: string
+  image:
+    type: string
+  network:
+    type: string
+resources:
+  Instance_1:
+    type: "OS::Nova::Server"
+    properties:
+      flavor: { get_param: flavor }
+      image: { get_param: image }
+      availability_zone: "nova"
+      networks:
+        - network: { get_param: network }

@@ -1,0 +1,39 @@
+﻿heat_template_version: "2017-09-01"
+description: "Setup new project network for selfservice and egress access."
+parameters:
+  external_net:
+    type: string
+resources:
+  Net_1:
+    type: "OS::Neutron::Net"
+    properties:
+      admin_state_up: true
+      name: selfservice
+      port_security_enabled: true
+  Subnet_1:
+    type: "OS::Neutron::Subnet"
+    properties:
+      network: { get_resource: Net_1 }
+      ip_version: 4
+      cidr: "10.0.0.0/16"
+      enable_dhcp: true
+    depends_on:
+      - Net_1
+  Router_1:
+    type: "OS::Neutron::Router"
+    properties:
+      external_gateway_info:
+        network: { get_param: external_net }
+        enable_snat: true
+      admin_state_up: true
+      name: "VM-Demand 10 router"
+    depends_on:
+      - Subnet_1
+  RouterInterface_1:
+    type: "OS::Neutron::RouterInterface"
+    properties:
+      router: { get_resource: Router_1 }
+      subnet: { get_resource: Subnet_1 }
+    depends_on:
+      - Router_1
+      - Subnet_1

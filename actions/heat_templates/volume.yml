@@ -1,0 +1,13 @@
+heat_template_version: "2017-09-01"
+description: "Create a volume."
+parameters:
+  size:
+    type: string
+  volume_type:
+    type: string
+resources:
+  Volume_1:
+    type: "OS::Cinder::Volume"
+    properties:
+      volume_type: { get_param: volume_type }
+      size: { get_param: size }

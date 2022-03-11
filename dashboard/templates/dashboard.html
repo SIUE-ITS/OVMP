@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load projects_extras %}
+{% block stylesheet %}
+<style>
+.spinner-border{position:absolute;left:0;right:0;top:0;bottom:0;margin:auto}
+</style>
+{% endblock %}
+{% block content %}
+{% if project %}
+<div id="projectContent">
+  <div class="spinner-border" role="status">
+    <span class="sr-only">Loading...</span>
+  </div>
+  <p align="center">Do not refresh while processing...</p>
+</div>
+{% else %}
+{% has_creator request.user 'CR' as creator %}
+<div align="center" style="margin-top: 30px">
+  {% if creator %}
+    <p align="center">You do not have any projects. <a href="{% url 'projects:create' %}">Create a project.</a></p>
+  {% else %}
+    <p align="center">You are not a member of any projects please contact <a href="mailto:its-openstack-support@siue.edu">its-openstack-support@siue.edu</a> to request access.</p>
+    <p>If you are supposed to have access been given by another user please contact them to have them add you to their project.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+{% block javascript %}
+{% if project %}
+<script>
+$(document).ready(function(){
+  $.ajax({
+    type: 'GET',
+    url: "{% url 'actions:console' project=project %}",
+    beforeSend: function(){
+      $("#projectContent").html(
+          '<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div><p align="center">Do not refresh while processing...</p>'
+        );
+    },
+    error: function(){
+      $("#projectContent").html('<h4>Failed please contact support by clicking Help above!</h4>');
+    },
+    success: function(html){
+      $("#projectContent").html(html);
+      window.history.pushState( {} , window.document.title, "{% url 'dashboard:dashboard_project' project=project %}" );
+    },
+    dataType: 'html'
+  });
+});
+</script>
+{% endif %}
+{% endblock%}
