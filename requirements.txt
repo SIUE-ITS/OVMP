@@ -1,1 +1,10 @@
 django-split-settings
+django-stronghold
+django-revproxy
+keystoneauth1
+python-keystoneclient
+python-heatclient
+python-novaclient
+python-neutronclient
+python-glanceclient
+pymemcache
