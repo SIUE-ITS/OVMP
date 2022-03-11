@@ -1,6 +1,6 @@
 django-split-settings
 django-stronghold
-django-revproxy
+git+https://github.com/jazzband/django-revproxy.git
 keystoneauth1
 python-keystoneclient
 python-heatclient
