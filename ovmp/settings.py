@@ -47,9 +47,9 @@ MIDDLEWARE = [
     'stronghold.middleware.LoginRequiredMiddleware',
 ]
 
-AUTHENTICATION_BACKENDS = (
+AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-)
+]
 
 ROOT_URLCONF = 'ovmp.urls'
 
