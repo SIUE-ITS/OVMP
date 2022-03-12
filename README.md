@@ -122,7 +122,8 @@ urlpatterns = [
 
 ```
 upstream nova-consoleproxy {
-    server {{ console_upstream }};
+    # IMPORTANT this should be the "non-floating" direct ip or hostname address of the novnc proxy. Reason being is that haproxy will not serve the wss correctly in the case you used kolla-ansible like us.
+    server {{ novncproxy-direct-ip }}:6080;
 }
 
 server {
