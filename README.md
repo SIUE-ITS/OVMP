@@ -4,9 +4,6 @@ OpenStack Virtual Machine Portal
 ### Early project
 We need help with development if you are interested also if you have any issues do not hesitate to contact us at its-cluster-support@siue.edu.
 
-#### Note
-Below configurations reference an example saml2 authentication if you need help implementing an authentication mechanism contact us from email above.
-
 ### Description
 Django application which provides simplified access to OpenStack VM management. Allows users to login, create projects, add users, create instances, and much more. Administrators are able to limit projects to specific resources given the weights in the configuration below. External authentication can easily be plugged in by using the `/etc/ovmp/local_settings.py` file.
 
@@ -67,9 +64,6 @@ importlib.import_module(location + '.settings')
 
 # You likely want a custom urls to use for plugging in your own authentication.
 ROOT_URLCONF = 'local_settings.urls'
-
-# Include settings for your authentication if you don't want to use Django auth.
-# include('/etc/ovmp/saml2_settings/settings.py')
 ```
 
 #### Example local_settings app for setting extra urls and stuff.
@@ -92,6 +86,8 @@ class LocalSettingsAppConfig(AppConfig):
 
 `/etc/ovmp/local_settings/settings.py`
 
+Note: the saml2_settings reference for authentication. You can also dump all authentication here with some "custom" views in `/etc/ovmp/local_settings/views.py` referenced in `/etc/ovmp/local_settings/urls.py`. This is beyond the scope of the project and plenty of resources online.
+
 ```
 from ovmp.settings import INSTALLED_APPS
 
@@ -100,9 +96,12 @@ if 'local_settings' not in INSTALLED_APPS:
     INSTALLED_APPS += [
         'local_settings',
     ]
+
+# Include settings for your authentication if you don't want to use Django auth.
+# include('/etc/ovmp/saml2_settings/settings.py')
 ```
 
-Note: below example file is including an authentication url commented out as saml2.
+Note: below example file is including an authentication url commented out as saml2. Where `saml2_settings` is located in `/etc/ovmp`.
 
 `/etc/ovmp/local_settings/urls.py`
 
