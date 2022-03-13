@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import sys
+sys.path.insert(0, '/opt/ovmp')
 import os
 os.environ["DJANGO_SETTINGS_MODULE"] = "ovmp.settings"
 
@@ -9,7 +11,6 @@ from projects.models import Project
 from images.models import Image
 from django.contrib.auth.models import User
 from actions.views import launch
-import sys
 from types import SimpleNamespace
 
 

@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+import sys
+sys.path.insert(0, '/opt/ovmp')
 import os
 os.environ["DJANGO_SETTINGS_MODULE"] = "ovmp.settings"
 
@@ -10,7 +13,6 @@ from images.models import Image
 from django.contrib.auth.models import User
 from django.db.utils import IntegrityError
 from actions.views import launch
-import sys
 from types import SimpleNamespace
 
 def main():
@@ -33,9 +35,8 @@ def main():
                 print('member created', user.strip())
             except IntegrityError:
                 print('member already exists', user.strip())
-        
+
 
 
 if __name__ == '__main__':
     main()
-
