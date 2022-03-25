@@ -23,6 +23,10 @@ from pymemcache import serde
 import types
 from urllib.parse import urlparse
 from collections import OrderedDict
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def failed(request, **kwargs):
@@ -41,28 +45,6 @@ def refresh(request, **kwargs):
     )
     MEMCACHED.delete('stacks' + request.user.username)
     return console(request, **kwargs)
-
-
-# def create_volume(request, **kwargs):
-#     project = Project.objects.get(name=kwargs['project'])
-#     sess = api.auth_setup(kwargs['project'])
-#     cinder = api.cinder_setup(sess)
-#     heat = api.heat_setup(sess)
-#     volume_type = cinder.volume_types.list()[0].id
-#     template_path = 'actions/heat_templates/volume.yml'
-#     _files, template = template_utils.get_template_contents(template_path)
-#     s_template = yaml.safe_dump(template)
-#     stack_name = '{}-{}-{}-volume'.format(request.user, project.uuid, kwargs['name'])
-#     parameters = {'volume_type': volume_type, 'size': kwargs['size']}
-#     heat.stacks.create(stack_name=stack_name, template=s_template, parameters=parameters)
-#     stack = heat.stacks.get(stack_name)
-#     status = heat.resources.get(stack.id, 'Volume_1').resource_status
-#     while status not in ['CREATE_COMPLETE', 'CREATE_FAILED']:
-#         status = heat.resources.get(stack.id, 'Volume_1').resource_status
-#         #print('Status: {}'.format(status))
-#         time.sleep(1)
-#     return console(request, **kwargs)
-
 
 
 @a_decorators.owner_vm
@@ -88,15 +70,6 @@ def delete(request, **kwargs):
     except heat_exc.HTTPNotFound:
         # already gone
         pass
-    # time.sleep(1)
-    # stack = heat.stacks.get(stack_name)
-    # while stack.status == 'IN_PROGRESS':
-    #     try:
-    #         stack = heat.stacks.get(stack_name)
-    #     except heat_exc.HTTPNotFound:
-    #         break
-    #     print(stack.status)
-    #     time.sleep(1)
 
     stacks = heat.stacks.list()
     stack_list = []
@@ -177,7 +150,7 @@ def power(request, **kwargs):
         MEMCACHED.set(kwargs['stack'] + '_server_status', 'ACTIVE')
         while status != 'ACTIVE':
             status = nova.servers.get(instance.physical_resource_id).status
-            print(status)
+            logger.info(status)
             time.sleep(2)
     else:
         if server.status == 'ACTIVE':
@@ -187,7 +160,7 @@ def power(request, **kwargs):
             MEMCACHED.set(kwargs['stack'] + '_server_status', 'SHUTOFF')
             while status != 'SHUTOFF':
                 status = nova.servers.get(instance.physical_resource_id).status
-                print(status)
+                logger.info(status)
                 time.sleep(2)
         else:
             server.start()
@@ -196,7 +169,7 @@ def power(request, **kwargs):
             MEMCACHED.set(kwargs['stack'] + '_server_status', 'ACTIVE')
             while status != 'ACTIVE':
                 status = nova.servers.get(instance.physical_resource_id).status
-                print(status)
+                logger.info(status)
                 time.sleep(2)
     return console(request, **kwargs)
 
@@ -297,13 +270,6 @@ def launch(request, **kwargs):
             break
         except heat_exc.HTTPConflict:
             pass
-
-    # stack = heat.stacks.get(stack_name)
-    # status = heat.resources.get(stack.id, 'Instance_1').resource_status
-    # while status not in ['CREATE_COMPLETE', 'CREATE_FAILED', 'CREATE_IN_PROGRESS']:
-    #     status = heat.resources.get(stack.id, 'Instance_1').resource_status
-    #     print('Status: {}'.format(status))
-    #     time.sleep(1)
     stacks = heat.stacks.list()
     stack_list = []
     for stack in stacks:
